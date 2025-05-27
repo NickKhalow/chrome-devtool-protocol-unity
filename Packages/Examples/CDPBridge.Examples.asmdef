@@ -1,0 +1,17 @@
+{
+    "name": "CDPBridge.Examples",
+    "rootNamespace": "",
+    "references": [
+        "GUID:9c1932d9907bf426d845767a97c591ac",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
