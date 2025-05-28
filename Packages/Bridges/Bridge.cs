@@ -13,47 +13,78 @@ namespace CDPBridges
 {
     public class Bridge : IBridge
     {
+        private readonly IBrowser browser;
         private readonly ILogger logger;
         private readonly WebSocketServer webSocketServer;
         private readonly CancellationTokenSource lifetimeCancellationTokenSource;
+        private readonly string address;
         private IWebSocketConnection? webSocketConnection;
 
-        public Bridge(int port = 1473, ILogger? logger = null)
+        public Bridge(int port = 1473, IBrowser? browser = null, ILogger? logger = null)
         {
+            this.browser = browser ?? new ProcessBrowser();
             this.logger = logger ?? NullLogger.Instance;
             lifetimeCancellationTokenSource = new CancellationTokenSource();
-            webSocketServer = new WebSocketServer($"ws://127.0.0.1:{port}");
+            address = $"127.0.0.1:{port}";
+            webSocketServer = new WebSocketServer($"ws://{address}");
         }
 
-        public void Start()
+        private void ConfigConnection(IWebSocketConnection socket)
+        {
+            webSocketConnection = socket;
+            socket.OnMessage += message =>
+            {
+                // logger.LogInformation("Socket message received: {}", message);
+                CDPRequest request = CDPRequest.FromJson(message);
+                logger.LogInformation("Socket request received: {}", request);
+
+                if (request.Method.IsNetwork_enable())
+                {
+                    var response = new CDPResponse(request.Id, CDPResult.Network_enable());
+                    SendEventAndForgetAsync(response, lifetimeCancellationTokenSource.Token).Forget();
+                }
+            };
+            socket.OnBinary += message => { logger.LogInformation("Socket binary received: {}", message.Length); };
+            socket.OnClose += () => { logger.LogInformation("Socket closed"); };
+            socket.OnError += exception => { logger.LogError(exception, "Error in CDP Bridge"); };
+            socket.OnOpen += () => { logger.LogInformation("Socket opened"); };
+        }
+
+        public BridgeStartResult Start()
         {
             logger.LogInformation("WebSocket start");
-            webSocketServer.Start(
-                socket =>
+            try
+            {
+                webSocketServer.Start(ConfigConnection);
+            }
+            catch (Exception e)
+            {
+                return BridgeStartResult.FromBridgeStartError(
+                    BridgeStartError.FromWebSocketError(new WebSocketError(e))
+                );
+            }
+
+            string url = $"devtools://devtools/bundled/inspector.html?ws={address}";
+            BrowserOpenResult result = browser.OpenUrl(url);
+            return result.Match(
+                (logger, url),
+                onSuccess: static ctx =>
                 {
-                    webSocketConnection = socket;
-                    socket.OnMessage += message =>
-                    {
-                        // logger.LogInformation("Socket message received: {}", message);
-                        CDPRequest request = CDPRequest.FromJson(message);
-                        logger.LogInformation("Socket request received: {}", request);
-
-                        if (request.Method.IsNetwork_enable())
-                        {
-                            var response = new CDPResponse(request.Id, CDPResult.Network_enable());
-                            SendEventAndForgetAsync(response, lifetimeCancellationTokenSource.Token).Forget();
-                        }
-                    };
-                    socket.OnBinary += message => { logger.LogInformation("Socket binary received: {}", message.Length); };
-                    socket.OnClose += () =>
-                    {
-                        logger.LogInformation("Socket closed");
-
-                        //TODO
-                    };
-                    socket.OnError += exception => { logger.LogError(exception, "Error in CDP Bridge"); };
-                    socket.OnOpen += () => { logger.LogInformation("Socket opened"); };
-                    //TODO
+                    ctx.logger.LogInformation("Browser opened with url: {}", ctx.url);
+                    return BridgeStartResult.Success();
+                },
+                onBrowserOpenError: static (ctx, error) =>
+                {
+                    error.Match(
+                        ctx,
+                        onErrorChromeNotInstalled: static ctx =>
+                            ctx.logger.LogError("Chrome browser is not installed cannot open url: {}", ctx.url),
+                        onException: static (ctx, exception) =>
+                            ctx.logger.LogError(exception, "Error on open url by browser with url {}", ctx.url)
+                    );
+                    return BridgeStartResult.FromBridgeStartError(
+                        BridgeStartError.FromBrowserOpenError(error)
+                    );
                 }
             );
         }

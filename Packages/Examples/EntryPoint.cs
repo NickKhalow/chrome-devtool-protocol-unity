@@ -13,7 +13,8 @@ public class EntryPoint : MonoBehaviour
     private void Start()
     {
         bridge = new Bridge(logger: new UnityLogger(nameof(Bridge)));
-        bridge.Start();
+        BridgeStartResult result = bridge.Start();
+        Debug.Log($"Bridge start result: {result}");
     }
 
     [ContextMenu(nameof(TriggerSend))]
