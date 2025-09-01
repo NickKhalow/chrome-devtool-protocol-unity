@@ -1,0 +1,16 @@
+{
+  "name": "com.nickkhalow.chrome-devtool-protocol-unity",
+  "version": "0.0.1",
+  "displayName": "Chrome Devtool Protocol Unity",
+  "description": "CDP integration for Unity",
+  "unity": "2019.1",
+  "keywords": [
+    "chrome",
+    "unity"
+  ],
+  "author": {
+    "name": "Nick Khalow",
+    "url": "https://github.com/NickKhalow",
+    "email": "nickhalow@gmail.com"
+  }
+}
