@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using REnum;
+
 // ReSharper disable All
 
 namespace CDPBridges
@@ -20,6 +21,13 @@ namespace CDPBridges
 
         public string type; //ResourceType
         public NetworkResponse.Raw response;
+
+        public string errorText;
+        public bool canceled;
+        public string? blockedReason;
+        public string? corsErrorStatus;
+
+        public long encodedDataLength;
     }
 
 
@@ -244,7 +252,7 @@ namespace CDPBridges
             Seconds = seconds;
         }
 
-        public static MonotonicTime Now => new MonotonicTime(Stopwatch.GetTimestamp() / (double) Stopwatch.Frequency);
+        public static MonotonicTime Now => new MonotonicTime(Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency);
     }
 
 
@@ -298,6 +306,8 @@ namespace CDPBridges
     [REnum]
     [REnumField(typeof(Network_requestWillBeSent))]
     [REnumField(typeof(Network_responseReceived))]
+    [REnumField(typeof(Network_loadingFinished))]
+    [REnumField(typeof(Network_loadingFailed))]
     public partial struct CDPEvent
     {
         public readonly struct Network_requestWillBeSent
@@ -379,15 +389,91 @@ namespace CDPBridges
             }
         }
 
+        public readonly struct Network_loadingFailed
+        {
+            public readonly int requestId;
+            public readonly MonotonicTime timestamp;
+            public readonly ResourceType type;
+            public readonly string errorText;
+            public readonly bool canceled;
+            // These are strings to avoid introducing new enums in this snippet.
+            // Can be swapped with BlockedReason/CorsErrorStatus enums accordingly.
+            public readonly string? blockedReason; // optional
+            public readonly string? corsErrorStatus; // optional
+
+            public Network_loadingFailed(
+                int requestId,
+                MonotonicTime timestamp,
+                ResourceType type,
+                string errorText,
+                bool canceled,
+                string? blockedReason = null,
+                string? corsErrorStatus = null)
+            {
+                this.requestId = requestId;
+                this.timestamp = timestamp;
+                this.type = type;
+                this.errorText = errorText;
+                this.canceled = canceled;
+                this.blockedReason = blockedReason;
+                this.corsErrorStatus = corsErrorStatus;
+            }
+
+            public ParamsRaw ToRaw()
+            {
+                return new ParamsRaw
+                {
+                    requestId = requestId,
+                    timestamp = timestamp.Seconds,
+                    type = type.ToString(),
+                    errorText = errorText,
+                    canceled = canceled,
+                    blockedReason = blockedReason,
+                    corsErrorStatus = corsErrorStatus
+                };
+            }
+        }
+
+        public readonly struct Network_loadingFinished
+        {
+            public readonly int requestId;
+            public readonly MonotonicTime timestamp;
+            public readonly long encodedDataLength;
+
+            public Network_loadingFinished(
+                int requestId,
+                MonotonicTime timestamp,
+                long encodedDataLength)
+            {
+                this.requestId = requestId;
+                this.timestamp = timestamp;
+                this.encodedDataLength = encodedDataLength;
+            }
+
+            public ParamsRaw ToRaw()
+            {
+                return new ParamsRaw
+                {
+                    requestId = requestId,
+                    timestamp = timestamp.Seconds,
+                    encodedDataLength = encodedDataLength
+                };
+            }
+        }
+
 
         private string MethodName() => Match(
             onNetwork_requestWillBeSent: static _ => "Network.requestWillBeSent",
-            onNetwork_responseReceived: static _ => "Network.responseReceived"
+            onNetwork_responseReceived: static _ => "Network.responseReceived",
+            onNetwork_loadingFinished: static _ => "Network_loadingFinished",
+            onNetwork_loadingFailed: static _ => "Network_loadingFailed"
         );
 
         private ParamsRaw ParamsRaw() => Match(
             onNetwork_requestWillBeSent: static e => e.ToRaw(),
-            onNetwork_responseReceived: static e => e.ToRaw()
+            onNetwork_responseReceived: static e => e.ToRaw(),
+            onNetwork_loadingFinished: static e => e.ToRaw(),
+            onNetwork_loadingFailed: static e => e.ToRaw()
         );
 
         public CDPEventRaw ToRaw()
