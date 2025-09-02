@@ -28,6 +28,7 @@ namespace CDPBridges
         public string? corsErrorStatus;
 
         public long encodedDataLength;
+        public long dataLength;
     }
 
 
@@ -308,6 +309,7 @@ namespace CDPBridges
     [REnumField(typeof(Network_responseReceived))]
     [REnumField(typeof(Network_loadingFinished))]
     [REnumField(typeof(Network_loadingFailed))]
+    [REnumField(typeof(Network_dataReceived))]
     public partial struct CDPEvent
     {
         public readonly struct Network_requestWillBeSent
@@ -434,6 +436,33 @@ namespace CDPBridges
             }
         }
 
+        public readonly struct Network_dataReceived
+        {
+            public readonly int requestId;
+            public readonly MonotonicTime timestamp;
+            public readonly int dataLength;
+            public readonly int encodedDataLength;
+
+            public Network_dataReceived(int requestId, MonotonicTime timestamp, int dataLength, int encodedDataLength)
+            {
+                this.requestId = requestId;
+                this.timestamp = timestamp;
+                this.dataLength = dataLength;
+                this.encodedDataLength = encodedDataLength;
+            }
+
+            public ParamsRaw ToRaw()
+            {
+                return new ParamsRaw
+                {
+                    requestId = requestId,
+                    timestamp = timestamp.Seconds,
+                    dataLength = dataLength,
+                    encodedDataLength = encodedDataLength,
+                };
+            }
+        }
+
         public readonly struct Network_loadingFinished
         {
             public readonly int requestId;
@@ -466,14 +495,16 @@ namespace CDPBridges
             onNetwork_requestWillBeSent: static _ => "Network.requestWillBeSent",
             onNetwork_responseReceived: static _ => "Network.responseReceived",
             onNetwork_loadingFinished: static _ => "Network_loadingFinished",
-            onNetwork_loadingFailed: static _ => "Network_loadingFailed"
+            onNetwork_loadingFailed: static _ => "Network_loadingFailed",
+            onNetwork_dataReceived: static _ => "Network_dataReceived"
         );
 
         private ParamsRaw ParamsRaw() => Match(
             onNetwork_requestWillBeSent: static e => e.ToRaw(),
             onNetwork_responseReceived: static e => e.ToRaw(),
             onNetwork_loadingFinished: static e => e.ToRaw(),
-            onNetwork_loadingFailed: static e => e.ToRaw()
+            onNetwork_loadingFailed: static e => e.ToRaw(),
+            onNetwork_dataReceived: static e => e.ToRaw()
         );
 
         public CDPEventRaw ToRaw()
