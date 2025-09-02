@@ -7,7 +7,8 @@ PluginImporter:
   serializedVersion: 3
   iconMap: {}
   executionOrder: {}
-  defineConstraints: []
+  defineConstraints:
+  - '!CDP_EXCLUDE_INBUILT_RENUM'
   isPreloaded: 0
   isOverridable: 0
   isExplicitlyReferenced: 0
