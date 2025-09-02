@@ -494,9 +494,9 @@ namespace CDPBridges
         private string MethodName() => Match(
             onNetwork_requestWillBeSent: static _ => "Network.requestWillBeSent",
             onNetwork_responseReceived: static _ => "Network.responseReceived",
-            onNetwork_loadingFinished: static _ => "Network_loadingFinished",
-            onNetwork_loadingFailed: static _ => "Network_loadingFailed",
-            onNetwork_dataReceived: static _ => "Network_dataReceived"
+            onNetwork_loadingFinished: static _ => "Network.loadingFinished",
+            onNetwork_loadingFailed: static _ => "Network.loadingFailed",
+            onNetwork_dataReceived: static _ => "Network.dataReceived"
         );
 
         private ParamsRaw ParamsRaw() => Match(
