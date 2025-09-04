@@ -1,3 +1,4 @@
+
 using System;
 using System.Diagnostics;
 
@@ -7,6 +8,10 @@ namespace CDPBridges
     {
         public BrowserOpenResult OpenUrl(string url)
         {
+
+// ProcessBrowser uses Mono API and it's not available in IL2CPP builds
+#if !ENABLE_IL2CPP
+
             try
             {
 #if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
@@ -36,7 +41,7 @@ namespace CDPBridges
                     "chrome",
                     $"\"{url}\""
                 );
-#endif
+#endif // UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
                 return BrowserOpenResult.Success();
             }
             catch (Exception e)
@@ -45,6 +50,10 @@ namespace CDPBridges
                     BrowserOpenError.FromException(e)
                 );
             }
+#else
+
+            return BrowserOpenResult.FromBrowserOpenError(BrowserOpenError.FromException(new PlatformNotSupportedException("IL2CPP is not supported")));
+#endif // !ENABLE_IL2CPP
         }
     }
 }
