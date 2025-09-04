@@ -1,7 +1,8 @@
-#nullable enable
-
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using Fleck;
 using Microsoft.Extensions.Logging;
@@ -16,9 +17,14 @@ namespace CDPBridges
         private readonly IBrowser browser;
         private readonly ILogger logger;
         private readonly WebSocketServer webSocketServer;
+        private readonly ConcurrentDictionary<int, IWebSocketConnection> connections;
         private readonly CancellationTokenSource lifetimeCancellationTokenSource;
         private readonly string address;
-        private IWebSocketConnection? webSocketConnection;
+
+        private int atomicConnectionIdIncremental;
+        private bool isServerStarted;
+
+        public BridgeStatus Status => isServerStarted ? BridgeStatus.Online : BridgeStatus.Offline;
 
         public Bridge(int port = 1473, IBrowser? browser = null, ILogger? logger = null)
         {
@@ -27,14 +33,23 @@ namespace CDPBridges
             lifetimeCancellationTokenSource = new CancellationTokenSource();
             address = $"127.0.0.1:{port}";
             webSocketServer = new WebSocketServer($"ws://{address}");
+            connections = new ConcurrentDictionary<int, IWebSocketConnection>();
         }
 
         private void ConfigConnection(IWebSocketConnection socket)
         {
-            webSocketConnection = socket;
+            int selfId = Interlocked.Increment(ref atomicConnectionIdIncremental);
+
+            bool addResult = connections.TryAdd(selfId, socket);
+            if (addResult == false)
+            {
+                logger.LogError(
+                    "Socket has not been added to connections dictionary, this situation must never happen, please check atomic counter");
+                return;
+            }
+
             socket.OnMessage += message =>
             {
-                // logger.LogInformation("Socket message received: {}", message);
                 CDPRequest request = CDPRequest.FromJson(message);
                 logger.LogInformation("Socket request received: {}", request);
 
@@ -45,24 +60,35 @@ namespace CDPBridges
                 }
             };
             socket.OnBinary += message => { logger.LogInformation("Socket binary received: {}", message.Length); };
-            socket.OnClose += () => { logger.LogInformation("Socket closed"); };
-            socket.OnError += exception => { logger.LogError(exception, "Error in CDP Bridge"); };
+            socket.OnClose += () =>
+            {
+                connections.TryRemove(selfId, out _);
+                logger.LogInformation("Socket closed");
+            };
+            socket.OnError += exception =>
+            {
+                connections.TryRemove(selfId, out _);
+                logger.LogError(exception, "Error in CDP Bridge");
+            };
             socket.OnOpen += () => { logger.LogInformation("Socket opened"); };
         }
 
         public BridgeStartResult Start()
         {
             logger.LogInformation("WebSocket start");
-            try
-            {
-                webSocketServer.Start(ConfigConnection);
-            }
-            catch (Exception e)
-            {
-                return BridgeStartResult.FromBridgeStartError(
-                    BridgeStartError.FromWebSocketError(new WebSocketError(e))
-                );
-            }
+
+            if (isServerStarted == false)
+                try
+                {
+                    webSocketServer.Start(ConfigConnection);
+                    isServerStarted = true;
+                }
+                catch (Exception e)
+                {
+                    return BridgeStartResult.FromBridgeStartError(
+                        BridgeStartError.FromWebSocketError(new WebSocketError(e))
+                    );
+                }
 
             string url = $"devtools://devtools/bundled/inspector.html?ws={address}";
             BrowserOpenResult result = browser.OpenUrl(url);
@@ -118,7 +144,7 @@ namespace CDPBridges
         //TODO ExceptionFree Annotation
         public async UniTask<SendResult> SendEventAsync(WebSocketMessage message, CancellationToken token)
         {
-            if (webSocketConnection is null)
+            if (connections.Count == 0)
             {
                 return SendResult.ConnectionIsNotEstablished();
             }
@@ -127,14 +153,19 @@ namespace CDPBridges
 
             try
             {
+                List<Task> taskList = new();
                 if (message.IsBinary(out WebSocketMessage.Binary? binary))
-                {
-                    await webSocketConnection.Send(binary!.Value.Data);
-                }
+                    foreach (KeyValuePair<int, IWebSocketConnection> pair in connections)
+                    {
+                        taskList.Add(pair.Value!.Send(binary!.Value.Data));
+                    }
                 else if (message.IsText(out WebSocketMessage.Text? text))
-                {
-                    await webSocketConnection.Send(text!.Value.Message);
-                }
+                    foreach (KeyValuePair<int, IWebSocketConnection> pair in connections)
+                    {
+                        taskList.Add(pair.Value!.Send(text!.Value.Message));
+                    }
+
+                await Task.WhenAll(taskList)!;
             }
             catch (Exception e)
             {

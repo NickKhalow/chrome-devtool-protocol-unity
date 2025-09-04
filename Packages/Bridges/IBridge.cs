@@ -7,9 +7,17 @@ namespace CDPBridges
 {
     public interface IBridge : IDisposable
     {
+        BridgeStatus Status { get; }
+        
         BridgeStartResult Start();
 
         UniTask<SendResult> SendEventAsync(CDPEvent cdpEvent, CancellationToken token);
+    }
+
+    public enum BridgeStatus
+    {
+        Offline,
+        Online
     }
 
 
