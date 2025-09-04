@@ -10,7 +10,7 @@ namespace CDPBridges
         {
 
 // ProcessBrowser uses Mono API and it's not available in IL2CPP builds
-#if !ENABLE_IL2CPP
+#if !ENABLE_IL2CPP && !CDP_EXCLUDE_PROCESS_BROWSER
 
             try
             {
