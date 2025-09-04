@@ -24,7 +24,9 @@ namespace CDPBridges
         private int atomicConnectionIdIncremental;
         private bool isServerStarted;
 
-        public BridgeStatus Status => isServerStarted ? BridgeStatus.Online : BridgeStatus.Offline;
+        public BridgeStatus Status => isServerStarted
+            ? connections.Count > 0 ? BridgeStatus.HasListeners : BridgeStatus.Online
+            : BridgeStatus.Offline;
 
         public Bridge(int port = 1473, IBrowser? browser = null, ILogger? logger = null)
         {

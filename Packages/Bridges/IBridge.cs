@@ -17,7 +17,8 @@ namespace CDPBridges
     public enum BridgeStatus
     {
         Offline,
-        Online
+        Online,
+        HasListeners
     }
 
 
