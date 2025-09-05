@@ -47,6 +47,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumFieldEmpty("UnsafeUrl")]
     [REnumFieldEmpty("NoReferrerWhenDowngrade")]
     [REnumFieldEmpty("NoReferrer")]
@@ -71,6 +72,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumFieldEmpty("Unknown")]
     [REnumFieldEmpty("Neutral")]
     [REnumFieldEmpty("Insecure")]
@@ -305,6 +307,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumField(typeof(Network_requestWillBeSent))]
     [REnumField(typeof(Network_responseReceived))]
     [REnumField(typeof(Network_loadingFinished))]

@@ -187,6 +187,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumFieldEmpty("Success")]
     [REnumFieldEmpty("ConnectionIsNotEstablished")]
     [REnumField(typeof(WebSocketError))]

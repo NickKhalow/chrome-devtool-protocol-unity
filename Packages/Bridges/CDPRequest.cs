@@ -51,6 +51,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumFieldEmpty("Network_enable")]
     [REnumField(typeof(Unknown))]
     public partial struct CDPMethod

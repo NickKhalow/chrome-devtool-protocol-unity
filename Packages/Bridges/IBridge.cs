@@ -23,6 +23,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumFieldEmpty("Success")]
     [REnumField(typeof(BridgeStartError))]
     public partial struct BridgeStartResult
@@ -32,6 +33,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumField(typeof(WebSocketError))]
     [REnumField(typeof(BrowserOpenError))]
     public partial struct BridgeStartError

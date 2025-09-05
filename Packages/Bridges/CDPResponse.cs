@@ -52,6 +52,7 @@ namespace CDPBridges
 
 
     [REnum]
+    [REnumPregenerated]
     [REnumFieldEmpty("Network_enable")]
     public partial struct CDPResult
     {
